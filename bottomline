@@ -1,4 +1,10 @@
-select country, count(distinct customerid) as customers, count(distinct transaction_id) as orders, count(distinct restaurantid) as restaurants, sum(value)/POW(10, 2) as revenue
-from kaboom-408215.kaboom.transaction_dimensions
-group by 1 
-order by 2 desc, 3 desc, 4 desc
+WITH revenue AS (SELECT 
+  a.country, a.currency,
+  count(distinct a.customerid) as customers, count(distinct a.transaction_id) as orders, count(distinct a.restaurantid) as restaurants,
+SUM(commission_revenue + other_revenue)/POW(10,2) AS total_revenue
+FROM `kaboom-408215.kaboom.transaction_dimensions` a
+INNER JOIN `kaboom-408215.kaboom.transaction_financials` b
+ON a.transaction_id = b.transaction_id AND a.currency = b.currency
+GROUP BY  country, currency)
+SELECT country, currency, customers, orders, restaurants, total_revenue
+FROM revenue 
