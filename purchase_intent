@@ -1,0 +1,13 @@
+SELECT
+    CASE WHEN transaction_id IS NOT NULL THEN 1 ELSE 0 END AS transaction_flag,
+    AVG(visit_duration) AS avg_visit_duration
+  FROM
+    `kaboom-408215.kaboom.user_engagements`
+  WHERE userid IS NOT NULL
+  GROUP BY 1 
+
+SELECT CASE WHEN transaction_id IS NOT NULL THEN 1 ELSE 0 END AS transaction_flag,
+      COUNT(*) AS checkout
+FROM kaboom-408215.kaboom.user_engagements
+WHERE funnel_level = 'checkout' AND userid IS NOT NULL
+GROUP BY 1
