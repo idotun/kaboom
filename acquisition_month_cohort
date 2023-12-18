@@ -1,0 +1,33 @@
+WITH CUSTOMERS AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY userid ORDER BY date) AS row_num FROM (SELECT
+    userid,
+    sessiondatetime AS date,
+    MIN(sessiondatetime) AS acquisition_date
+  FROM
+    kaboom-408215.kaboom.user_engagements
+  WHERE transaction_id IS NOT NULL AND userid IS NOT NULL
+  GROUP BY 1,2
+  ORDER BY 1,2)
+), 
+FIRST_TRANSACTION_DATES AS (
+  SELECT userid, DATE(acquisition_date) AS acquisition_date
+  FROM CUSTOMERS
+  WHERE row_num = 1 AND acquisition_date BETWEEN '2019-06-01' AND '2020-05-31'
+
+),
+TRANSACTION_DATES AS (
+  SELECT userid, DATE(sessiondatetime) as transaction_date, transaction_id
+  FROM kaboom-408215.kaboom.user_engagements
+  WHERE DATE(sessiondatetime) >= '2019-06-01'
+  AND transaction_id IS NOT NULL AND userid IS NOT NULL
+),
+JOIN_DATES AS (SELECT a.userid, a.acquisition_date, b.transaction_date, DATE_DIFF(b.transaction_date, a.acquisition_date,  MONTH) AS months_since_acquisition, transaction_id
+               FROM FIRST_TRANSACTION_DATES a
+               LEFT JOIN TRANSACTION_DATES b
+               ON a.userid = b.userid
+)
+SELECT months_since_acquisition, FORMAT_DATE('%Y-%m', acquisition_date) AS acquisition_month,
+  COUNT(DISTINCT userid) AS users,
+  COUNT(DISTINCT transaction_id) AS transactions
+FROM JOIN_DATES
+GROUP BY 1,2
+ORDER BY 1
