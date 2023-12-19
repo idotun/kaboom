@@ -11,4 +11,37 @@ FROM
     )
 GROUP BY
     1;
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- get transactions that meet for users that are defined as having high intent to purchase ---
+WITH TRANSACTIONS AS (
+    SELECT DISTINCT transaction_id
+    FROM `kaboom-408215.kaboom.user_engagements`
+    WHERE visit_duration >= 560
+        AND funnel_level = 'checkout'
+        AND transaction_id IS NOT NULL
+        AND userid IS NOT NULL
+)
+-- get marketing cost and channel through which the transactions come --
+SELECT
+    c.channel_name,
+    a.currency,
+    COUNT(DISTINCT a.transaction_id) AS transactions,
+    SUM(b.marketing_cost) / POW(10, 2) AS marketing_cost
+FROM
+    `kaboom-408215.kaboom.transaction_dimensions` a
+INNER JOIN
+    `kaboom-408215.kaboom.transaction_financials` b
+ON
+    a.transaction_id = b.transaction_id
+INNER JOIN
+    `kaboom-408215.kaboom.dim_channel` c
+ON
+    a.channel_id = c.channel_id
+WHERE
+    a.transaction_id IN (SELECT DISTINCT transaction_id FROM TRANSACTIONS)
+GROUP BY
+    channel_name, currency
+ORDER BY
+    currency;
+
 
