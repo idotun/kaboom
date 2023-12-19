@@ -1,13 +1,14 @@
+-- get average visit duration, menu sessions, checkout sessions and group by transaction or no transaction --- 
 SELECT
     CASE WHEN transaction_id IS NOT NULL THEN 1 ELSE 0 END AS transaction_flag,
-    AVG(visit_duration) AS avg_visit_duration
-  FROM
-    `kaboom-408215.kaboom.user_engagements`
-  WHERE userid IS NOT NULL
-  GROUP BY 1 
+    AVG(visit_duration) AS avg_visit_duration,
+    COUNT(DISTINCT CASE WHEN funnel_level = 'menu' THEN sessionid END) AS menu_sessions,
+    COUNT(DISTINCT CASE WHEN funnel_level = 'checkout' THEN sessionid END) AS checkout_sessions
+FROM
+    (
+        SELECT DISTINCT sessionid, funnel_level, userid, visit_duration, transaction_id, sessiondatetime
+        FROM `kaboom-408215.kaboom.user_engagements`
+    )
+GROUP BY
+    1;
 
-SELECT CASE WHEN transaction_id IS NOT NULL THEN 1 ELSE 0 END AS transaction_flag, funnel_level,
-      COUNT(sessionid) AS visits
-FROM kaboom-408215.kaboom.user_engagements
-WHERE userid IS NOT NULL AND funnel_level IN ('menu', 'checkout')
-GROUP BY 1,2
