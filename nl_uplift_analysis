@@ -1,0 +1,11 @@
+SELECT 
+  FORMAT_DATE('%Y-%m', DATE(a.orderdatetime)) AS year_month,
+  COUNT(DISTINCT a.transaction_id) AS orders,
+  SUM(b.marketing_cost)/POW(10,2) AS marketing_cost,
+  SUM(b.commission_revenue + b.other_revenue)/POW(10,2) AS total_revenue
+FROM `kaboom-408215.kaboom.transaction_dimensions` a
+INNER JOIN `kaboom-408215.kaboom.transaction_financials` b
+ON a.transaction_id = b.transaction_id AND a.currency = b.currency
+WHERE country = 'NL'
+GROUP BY year_month
+ORDER BY year_month;
