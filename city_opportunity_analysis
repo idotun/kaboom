@@ -1,0 +1,43 @@
+WITH rate AS (
+    SELECT ccy, rate
+    FROM `kaboom-408215.kaboom.fx_rates_eur`
+    WHERE ccy IN ('EUR', 'PLN', 'CHF')
+    GROUP BY ccy, rate
+)
+
+-- retrieve city id, customers, orders---
+SELECT
+    b.name,                           
+    a.customercityid,                 
+    a.currency,                       
+    c.exponent,                       
+    e.rate,                           
+    COUNT(DISTINCT a.customerid) AS customers,                  
+    COUNT(DISTINCT a.transaction_id) AS orders,                 
+    COUNT(DISTINCT a.restaurantid) AS restaurants,             
+    (SUM(operation_cost) / POW(10, exponent)) * e.rate AS operation_cost,  
+    (SUM(other_revenue + commission_revenue) / POW(10, exponent)) * e.rate AS revenue 
+FROM
+    `kaboom-408215.kaboom.transaction_dimensions` a
+INNER JOIN 
+    `kaboom-408215.kaboom.transaction_financials` d
+ON
+    a.transaction_id = d.transaction_id
+INNER JOIN 
+    `kaboom-408215.kaboom.cities` b
+ON
+    b.city_id = a.customercityid
+INNER JOIN
+    `kaboom-408215.kaboom.currency_details` c
+ON
+    a.currency = c.currency
+INNER JOIN
+    rate e 
+ON
+    e.ccy = a.currency
+WHERE
+    DATE(a.orderdatetime) BETWEEN '2019-06-01' AND '2020-05-31' 
+GROUP BY
+    name, customercityid, currency, exponent, rate
+ORDER BY
+    customers DESC, orders DESC;  
