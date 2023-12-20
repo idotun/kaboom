@@ -1,10 +1,73 @@
-WITH revenue AS (SELECT 
-  a.country, a.currency,
-  count(distinct a.customerid) as customers, count(distinct a.transaction_id) as orders, count(distinct a.restaurantid) as restaurants,
-SUM(commission_revenue + other_revenue)/POW(10,2) AS total_revenue
-FROM `kaboom-408215.kaboom.transaction_dimensions` a
-INNER JOIN `kaboom-408215.kaboom.transaction_financials` b
-ON a.transaction_id = b.transaction_id AND a.currency = b.currency
-GROUP BY  country, currency)
-SELECT country, currency, customers, orders, restaurants, total_revenue
-FROM revenue 
+WITH cost_revenue AS (
+    -- get total cost and total revenue in cash for each year-month, country, and currency to work out bottom line --
+    SELECT 
+        FORMAT_DATE('%Y-%m', DATE(a.orderdatetime)) AS year_month,
+        a.country,
+        a.currency,
+        SUM(marketing_cost + operation_cost + administration_cost) / POW(10, 2) AS total_cost,
+        SUM(commission_revenue + other_revenue) / POW(10, 2) AS total_revenue
+    FROM 
+        `kaboom-408215.kaboom.transaction_dimensions` a
+    INNER JOIN 
+        `kaboom-408215.kaboom.transaction_financials` b
+    ON 
+        a.transaction_id = b.transaction_id AND a.currency = b.currency
+    WHERE DATE(a.orderdatetime) BETWEEN '2019-06-01' AND '2020-05-31'
+    GROUP BY 
+        year_month, country, currency
+    ORDER BY 
+        year_month
+)
+
+-- work out the bottom line and convert to (EUR)--
+SELECT 
+    d.year_month,
+    d.country,
+    ROUND(d.total_cost* e.rate, 2) AS total_cost,
+    ROUND(d.total_revenue* e.rate, 2) AS total_revenue,
+    ROUND((d.total_revenue - d.total_cost)* e.rate, 2) AS bottomline
+FROM 
+    cost_revenue d
+INNER JOIN 
+    `kaboom-408215.kaboom.fx_rates_eur` e
+ON 
+    e.ccy = d.currency
+GROUP BY 
+    d.year_month, d.country, bottomline;
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+WITH cost_revenue AS (
+    -- to understand why NL's bottom line is better --
+    SELECT 
+        a.country,
+        a.currency,
+        COUNT(DISTINCT a.customerid) AS customers,
+        COUNT(DISTINCT a.transaction_id) AS orders,
+        COUNT(DISTINCT a.restaurantid) AS restaurants,
+        SUM(commission_revenue + other_revenue) / POW(10, 2) AS total_revenue --- integer to cash --
+    FROM 
+        `kaboom-408215.kaboom.transaction_dimensions` a
+    INNER JOIN 
+        `kaboom-408215.kaboom.transaction_financials` b
+    ON 
+        a.transaction_id = b.transaction_id AND a.currency = b.currency
+    WHERE DATE(a.orderdatetime) BETWEEN '2019-06-01' AND '2020-05-31'
+    GROUP BY 
+       country, currency
+)
+SELECT 
+    d.country,
+    d.customers,
+    d.orders,
+    d.restaurants,
+    ROUND(d.total_revenue* e.rate, 2) AS total_revenue -- convert to EUR --
+FROM 
+    cost_revenue d
+INNER JOIN 
+    `kaboom-408215.kaboom.fx_rates_eur` e
+ON 
+    e.ccy = d.currency
+GROUP BY 
+   d.country,d.customers,d.orders,  d.restaurants, total_revenue
+ORDER BY d.customers DESC;
+
