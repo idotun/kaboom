@@ -33,7 +33,7 @@ INNER JOIN
 ON 
     e.ccy = d.currency
 GROUP BY 
-    d.year_month, d.country, bottomline;
+    d.year_month, d.country, total_cost, total_revenue, bottomline;
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------
 WITH cost_revenue AS (
